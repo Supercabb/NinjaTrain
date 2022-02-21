@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-
+using UnityEngine.XR.Interaction.Toolkit;
 
 
 public class animation_test : MonoBehaviour
 {
     [SerializeField]
     private AudioClip audioHaptic;
+
+  
+
     const int channel = 1;
-    OVRHapticsClip HapticClip;
+    //OVRHapticsClip HapticClip;
 
     public Rigidbody rb;
     public AudioSource shurikenSound;
@@ -25,9 +28,6 @@ public class animation_test : MonoBehaviour
 
     private Vector3 directionColision = Vector3.zero;
     private float inclinitationShuriken = 0.0f;
-
-    private float secondsVibrationTime=0.5f;
-    private float timeToStopVibrations=0.0f;
 
 
     public void PlaySoundThrow()
@@ -84,14 +84,34 @@ public class animation_test : MonoBehaviour
         speed=sp;
     }
 
+    void VibrateRightHand()
+    {
+        List<UnityEngine.XR.InputDevice> devices = new List<UnityEngine.XR.InputDevice>();
 
+        UnityEngine.XR.InputDevices.GetDevicesWithRole(UnityEngine.XR.InputDeviceRole.RightHanded, devices);
+
+        foreach (var device in devices)
+        {
+            UnityEngine.XR.HapticCapabilities capabilities;
+            if (device.TryGetHapticCapabilities(out capabilities))
+            {
+                if (capabilities.supportsImpulse)
+                {
+                    uint channel = 0;
+                    float amplitude = 1.0f;
+                    float duration = 0.5f;
+                    device.SendHapticImpulse(channel, amplitude, duration);
+                }
+            }
+        }
+    }
    
     void OnCollisionEnter(Collision collision)
     {
 
         if (collision.gameObject.name == "CenterEyeAnchor")
         {
-            RawImage damage = GameObject.Find("ScreenDamage").GetComponent<RawImage>();
+            RawImage damage = GameObject.Find("RawImageScreen").GetComponent<RawImage>();
             Color newColor = damage.color;
             newColor.a += 0.20f;
 
@@ -109,11 +129,11 @@ public class animation_test : MonoBehaviour
             Destroy(this.gameObject);
         }
         
-        else if (collision.gameObject.name == "katana")
+        else if ((collision.gameObject.name == "katana") || (collision.gameObject.name == "katanaHR"))
         {
             if (beforeFistCollision)
-            {
-                Vector3 bladePos = GameObject.Find("katana").transform.position;
+            {                
+                Vector3 bladePos = GameObject.Find(collision.gameObject.name).transform.position;
                 Vector3 shurikenPos = this.transform.position;
                 Vector3 direction = shurikenPos - bladePos;
                 direction.Normalize();
@@ -122,9 +142,11 @@ public class animation_test : MonoBehaviour
 
                 directionColision = collision.contacts[0].normal;
                 bladeSound.Play();
-  
-                OVRHapticsClip haptic = new OVRHapticsClip(audioHaptic);
-                OVRHaptics.RightChannel.Preempt(haptic);
+
+                VibrateRightHand();
+
+               // OVRHapticsClip haptic = new OVRHapticsClip(audioHaptic);
+              //  OVRHaptics.RightChannel.Preempt(haptic);
 
                 Destroy(this.gameObject,10.0f);
             }
